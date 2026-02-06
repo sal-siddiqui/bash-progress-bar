@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+## IMPORTANT
+# To specify what files to iterate over         -> Line 40
+# To specify the command to run over said files -> Line 46
+
+
+shopt -s globstar nullglob
+
+PROGRESS_BAR_WIDTH=50
+PROGRESS_BAR_FILL_CHAR='#'
+PROGRESS_BAR_EMPTY_CHAR='.'
+BATCH_SIZE=5
+
+function log {
+        printf "[INFO] %s\n" "$*" >&2;
+}
+
+function draw-progress-bar {
+        local current=$(($1 + BATCH_SIZE))
+        local total=$2
+
+        (( current > total )) && current=$total
+
+        local progress=$((current * 100 / total))
+        local bars=$((progress * PROGRESS_BAR_WIDTH / 100)) # scale to accomodate within terminal width
+
+        local output="($progress %) ["
+        local i
+        for (( i=0; i < bars; i++)); do
+                output+="$PROGRESS_BAR_FILL_CHAR"
+        done
+        for (( i=bars; i < PROGRESS_BAR_WIDTH; i++)); do
+                output+="$PROGRESS_BAR_EMPTY_CHAR"
+        done
+        output+="] ($current/$total)"
+
+        echo -ne "\r\033[K$output"
+}
+
+function process-files {
+        local files=("$@")
+        : "${files[@]}" # replace : with <command>
+        sleep .01
+}
+
+
+log "Finding files ..."
+files=(./**/*cache) # replace with files of interest
+len=${#files[@]}
+log "Found $len files"
+
+log "Processing ..."
+for (( i = 0; i < len; i += BATCH_SIZE )); do
+        draw-progress-bar "$i" "$len"
+        process-files "${files[@]:i:BATCH_SIZE}"
+done
+echo
